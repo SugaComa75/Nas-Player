@@ -95,7 +95,7 @@
                 <div class="update-heading">
                     <div>
                         <h2>Application updates</h2>
-                        <p class="muted">Downloads only files changed by a published GitHub release. Local modifications,
+                        <p class="muted">Downloads only files changed by a compatible public GitHub release. Local modifications,
                             installation settings and private data are never overwritten automatically.</p>
                     </div><span class="pill">Installed
                         <?= tt_h((string) ($updateState['version'] ?? $releaseInfo['version'])) ?></span>
@@ -105,8 +105,11 @@
                 <form method="post" class="inline-form update-repository"><input type="hidden" name="csrf"
                         value="<?= tt_h(tt_csrf_token()) ?>"><input type="hidden" name="action"
                         value="update_settings"><label>GitHub repository<input name="update_repository"
-                            value="<?= tt_h($updateRepository) ?>" placeholder="owner/repository" required></label><button
+                        value="<?= tt_h($updateRepository) ?>" placeholder="owner/repository or GitHub URL" required></label><button
                         class="button">Save repository</button></form>
+                <p class="muted">Default: <?= tt_h((string) $releaseInfo['repository']) ?>. You may use a compatible public
+                    GitHub fork that publishes releases with this application's manifest. Choosing a fork trusts its
+                    maintainer to supply application updates.</p>
                 <?php if ($updateResult && $notice): ?>
                     <div class="alert success"><?= tt_h($notice) ?></div>
                 <?php endif; ?>                <div class="update-actions">

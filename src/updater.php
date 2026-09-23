@@ -22,6 +22,8 @@ function tt_update_release_config(string $appRoot): array
     if (!is_array($release) || empty($release['version']) || empty($release['ref']) || empty($release['repository'])) {
         throw new RuntimeException('The application release configuration is missing or invalid.');
     }
+    $release['repository'] = tt_update_validate_repository((string) $release['repository']);
+    $release['project'] = tt_update_validate_project((string) ($release['project'] ?? 'tea-and-toast-nas-player'));
     $release['manifest'] = (string) ($release['manifest'] ?? 'release-manifest.json');
     return $release;
 }
@@ -100,13 +102,32 @@ function tt_update_read_manifest_file(string $path): array
     return tt_update_validate_manifest($manifest);
 }
 
-function tt_update_validate_manifest(mixed $manifest, ?string $expectedRepository = null, ?string $expectedRef = null): array
+function tt_update_validate_manifest(
+    mixed $manifest,
+    ?string $expectedRepository = null,
+    ?string $expectedRef = null,
+    ?string $expectedProject = null,
+    ?string $canonicalRepository = null
+): array
 {
     if (!is_array($manifest) || ($manifest['schema'] ?? null) !== 1 || !is_array($manifest['files'] ?? null)) {
         throw new RuntimeException('The release manifest format is not supported.');
     }
-    if ($expectedRepository !== null && strcasecmp((string) ($manifest['repository'] ?? ''), $expectedRepository) !== 0) {
-        throw new RuntimeException('The release manifest belongs to a different GitHub repository.');
+    $manifestRepository = tt_update_validate_repository((string) ($manifest['repository'] ?? ''));
+    $manifestProject = isset($manifest['project']) ? tt_update_validate_project((string) $manifest['project']) : null;
+    $manifest['repository'] = $manifestRepository;
+    if ($manifestProject !== null) {
+        $manifest['project'] = $manifestProject;
+    }
+    if ($expectedRepository !== null) {
+        $sourceMatches = strcasecmp($manifestRepository, tt_update_validate_repository($expectedRepository)) === 0;
+        $canonicalMatches = $canonicalRepository !== null
+            && strcasecmp($manifestRepository, tt_update_validate_repository($canonicalRepository)) === 0;
+        $projectMatches = $expectedProject !== null && $manifestProject !== null
+            && hash_equals(tt_update_validate_project($expectedProject), $manifestProject);
+        if (!$sourceMatches && !$canonicalMatches && !$projectMatches) {
+            throw new RuntimeException('The selected repository does not contain a compatible Tea & Toast NAS Player release manifest.');
+        }
     }
     if ($expectedRef !== null && (string) ($manifest['ref'] ?? '') !== $expectedRef) {
         throw new RuntimeException("The release manifest does not match the published release tag. Expected ref '{$expectedRef}', received '" . (string) ($manifest['ref'] ?? '') . "'.");
@@ -169,10 +190,23 @@ function tt_update_load_state(string $appRoot, string $dataRoot): array
 function tt_update_validate_repository(string $repository): string
 {
     $repository = trim($repository);
+    $repository = preg_replace('#^https?://github\.com/#i', '', $repository) ?? $repository;
+    $repository = preg_replace('#^git@github\.com:#i', '', $repository) ?? $repository;
+    $repository = preg_replace('/\.git$/i', '', $repository) ?? $repository;
+    $repository = trim($repository, '/');
     if (!preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $repository)) {
-        throw new RuntimeException('Enter the GitHub repository as owner/name.');
+        throw new RuntimeException('Enter a public GitHub repository as owner/name or https://github.com/owner/name.');
     }
     return $repository;
+}
+
+function tt_update_validate_project(string $project): string
+{
+    $project = strtolower(trim($project));
+    if (!preg_match('/^[a-z0-9][a-z0-9-]{2,63}$/', $project)) {
+        throw new RuntimeException('The release manifest has an invalid project identity.');
+    }
+    return $project;
 }
 
 function tt_update_http_get(string $url, bool $json = false): string|array
@@ -299,7 +333,13 @@ function tt_update_build_plan(string $appRoot, string $dataRoot, string $reposit
     }
     $releaseConfig = tt_update_release_config($appRoot);
     $manifestUrl = tt_update_raw_url($repository, $targetRef, (string) $releaseConfig['manifest']);
-    $targetManifest = tt_update_validate_manifest(tt_update_http_get($manifestUrl, true), $repository, $targetRef);
+    $targetManifest = tt_update_validate_manifest(
+        tt_update_http_get($manifestUrl, true),
+        $repository,
+        $targetRef,
+        (string) $releaseConfig['project'],
+        (string) $releaseConfig['repository']
+    );
     $comparison = tt_update_compare_files($appRoot, $state, $targetManifest);
     $entries = $comparison['entries'];
     $counts = $comparison['counts'];

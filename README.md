@@ -13,6 +13,7 @@ A small PHP music player that browses NAS folders directly. It deliberately does
 - Highlights the current track's play button with the configured theme colour.
 - Keeps its one SQLite file outside the web root. That database contains only users, settings, library paths and user features—not the music catalogue.
 - Checks published GitHub releases from the Admin panel and downloads only changed application files.
+- Lets the Super Administrator follow the official public repository or a compatible GitHub fork.
 - Protects locally modified files, private configuration and data during updates, with automatic backups and rollback.
 
 ## Install
@@ -24,6 +25,8 @@ A small PHP music player that browses NAS folders directly. It deliberately does
 5. Delete or rename `install.php`.
 
 The normal GitHub **Download ZIP** is the installation package. Archive rules omit development-only files. Future releases are installed from **Admin → Application updates**; only the Super Administrator can run an update.
+
+The official update source is `SugaComa75/Nas-Player`. A Super Administrator may select a compatible public GitHub fork in the update settings; doing so trusts that fork's maintainer to publish application updates.
 
 The NAS folders must be readable by the PHP/web-server account. A library can be outside the web-host folder; it is served only through the authenticated streaming endpoint. The local configuration and SQLite data remain outside the public music directory.
 
@@ -38,5 +41,5 @@ This clean build includes the player, installer, focused administrator page and 
 
 ## Releasing updates
 
-See [UPDATER-RELEASE-GUIDE.md](UPDATER-RELEASE-GUIDE.md) before publishing a GitHub release.
+The maintainer release procedure and private Gitea workflow are kept with the source-of-truth repository.
 
