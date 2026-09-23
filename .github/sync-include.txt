@@ -1,0 +1,10 @@
+.htaccess
+README.md
+index.php
+install.php
+release-manifest.json
+assets
+config/bootstrap.php
+config/release.php
+src
+views
